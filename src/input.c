@@ -190,13 +190,19 @@ get_resize_edges(struct simple_client *client, double x, double y)
 }
 
 static void 
-process_cursor_move(uint32_t time) 
+process_cursor_move(uint32_t time, bool move_all_clients) 
 {
    struct simple_client *client = g_server->grabbed_client;
    if(!client || client->fullscreen) return;
 
+   int initial_x = client->geom.x;
+   int initial_y = client->geom.y;
+
    int new_x = g_server->cursor->x - g_server->grab_x;
    int new_y = g_server->cursor->y - g_server->grab_y;
+
+   int diff_x = initial_x - new_x;
+   int diff_y = initial_y - new_y;
 
    //Don't do anything if geometry is identical
    if(client->geom.x==new_x && client->geom.y==new_y) return;
@@ -206,6 +212,20 @@ process_cursor_move(uint32_t time)
    
    client->geom.x = new_x;
    client->geom.y = new_y;
+
+   if (move_all_clients)
+   {
+      struct simple_client * c;
+      wl_list_for_each(c, &g_server->clients, link) {
+         if (c == client)
+         {
+            continue;
+         }
+         c->geom.x -= diff_x;
+         c->geom.y -= diff_y;
+         set_client_geometry(c, false);
+      }
+   }
 
    set_client_geometry(client, false);
 }
@@ -302,8 +322,10 @@ process_cursor_motion(uint32_t time, struct wlr_input_device *device, double dx,
 
    g_server->cur_output = get_output_at(g_server->cursor->x, g_server->cursor->y);
 
-   if(g_server->cursor_mode == CURSOR_MOVE) {
-      process_cursor_move(time);
+   bool move_all_clients = g_server->cursor_mode == CURSOR_CAMERA/* true */;
+
+   if(g_server->cursor_mode == CURSOR_MOVE || g_server->cursor_mode == CURSOR_CAMERA) {
+      process_cursor_move(time, move_all_clients);
       return;
    } else if(g_server->cursor_mode == CURSOR_RESIZE) {
       process_cursor_resize(time);
@@ -377,30 +399,30 @@ process_cursor_button(uint32_t time, struct wlr_input_device *device, uint32_t b
          struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(g_server->seat);
          uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard);
          // press on desktop
-         if(!client && ctype==-1) {
-            say(DEBUG, "press on desktop");
+
+         /*
+         */
+         if (ctype == LAYER_SHELL_CLIENT)
+         {
+            say(DEBUG, "Layer Shell input");
+            input_focus_surface(surface);
+         }
+         else
+         {
             wl_list_for_each(mousemap, &g_config->mouse_bindings, link) {
                if(modifiers ^ mousemap->mask) continue;
 
-               if(mousemap->context==CONTEXT_ROOT && button == mousemap->button){
+               if((mousemap->context==CONTEXT_ROOT || mousemap->context==CONTEXT_ALL) &&
+                  button == mousemap->button){
                   mouse_function(NULL, mousemap, 0);
                   return;
                }
-            }
-         } else if(ctype!=LAYER_SHELL_CLIENT) { //press on client
-            focus_client(client, true);
-            uint32_t resize_edges = get_resize_edges(client, g_server->cursor->x, g_server->cursor->y);
-            wl_list_for_each(mousemap, &g_config->mouse_bindings, link) {
-               if(modifiers ^ mousemap->mask) continue;
-
-               if(mousemap->context==CONTEXT_CLIENT && button == mousemap->button){
+               else if (client != NULL && mousemap->context==CONTEXT_CLIENT && button == mousemap->button) {
+                  focus_client(client, true);
+                  uint32_t resize_edges = get_resize_edges(client, g_server->cursor->x, g_server->cursor->y);
                   mouse_function(client, mousemap, resize_edges);
-                  return;
                }
             }
-         } else {
-            say(DEBUG, "Layer Shell input");
-            input_focus_surface(surface);
          }
          break;
    } // switch

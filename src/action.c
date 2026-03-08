@@ -81,6 +81,9 @@ mouse_function(struct simple_client *client, struct mousemap *mousemap, int resi
       if(!strcmp(mousemap->argument, "move"))   begin_interactive(client, CURSOR_MOVE, 0);
       if(!strcmp(mousemap->argument, "resize")) begin_interactive(client, CURSOR_RESIZE, resize_edges);
    }
+   if (mousemap->context==CONTEXT_ALL) {
+      if(!strcmp(mousemap->argument, "movecamera"))   begin_interactive(NULL, CURSOR_CAMERA, 0);
+   }
 }
 
 void

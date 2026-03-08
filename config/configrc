@@ -47,7 +47,8 @@ tablet_boundary_y = 0 1
 #--- Key Bindings -----
 KEY = A+q QUIT 0
 #--- Spawns
-KEY = S+A+Return SPAWN foot
+KEY = S+A+Return SPAWN wofi --show run
+KEY = A+Return SPAWN alacritty
 #KEY = XF86AudioMute SPAWN pactl set-sink-mute @DEFAULT_SINK@ toggle
 #--- Client actions
 KEY = A+Tab CLIENT cycle
@@ -85,4 +86,5 @@ KEY = W+S+Right CLIENT tile_right
 #--- Mouse Bindings -----
 MOUSE = A+Button_Left CLIENT move
 MOUSE = A+Button_Right CLIENT resize
+MOUSE = A+Button_Middle ALL movecamera
 #MOUSE = Button_Left ROOT test

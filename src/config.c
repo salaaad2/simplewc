@@ -237,8 +237,18 @@ readConfiguration(char* filename)
          }
 
          int this_context = -1;
-              if(!strcmp(context, "ROOT"))   this_context = CONTEXT_ROOT;
-         else if(!strcmp(context, "CLIENT")) this_context = CONTEXT_CLIENT;
+         if(!strcmp(context, "ROOT"))
+         {
+            this_context = CONTEXT_ROOT;
+         }
+         else if (!strcmp(context, "CLIENT"))
+         {
+            this_context = CONTEXT_CLIENT;
+         }
+         else if (!strcmp(context, "ALL"))
+         {
+            this_context = CONTEXT_ALL;
+         }
 
          struct mousemap *mousebind = calloc(1, sizeof(struct mousemap));
          mousebind->mask = mod;

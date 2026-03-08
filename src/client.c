@@ -205,7 +205,26 @@ begin_interactive(struct simple_client *client, enum CursorMode mode, uint32_t e
 {
    // this function sets up an interactive move or resize operation
    struct wlr_surface *focused_surface = g_server->seat->pointer_state.focused_surface;
-   
+
+   // no client selected: pick one. tell g_server we're moving all windows at once
+   //  using CURSOR_CAMERA
+   if (client == NULL && mode == CURSOR_CAMERA) {
+      struct simple_client * c;
+      wl_list_for_each(c, &g_server->clients, link) {
+         g_server->grabbed_client = c;
+         g_server->cursor_mode = CURSOR_CAMERA;
+
+         if(mode == CURSOR_CAMERA) {
+            say(DEBUG, "CURSOR_CAMERA");
+            g_server->grab_x = g_server->cursor->x - c->geom.x;
+            g_server->grab_y = g_server->cursor->y - c->geom.y;
+            wlr_cursor_set_xcursor(g_server->cursor, g_server->cursor_manager, "fleur");
+         }
+         return;
+      }
+      return;
+   }
+
    // do not move/request unfocused clients
    if(get_client_surface(client) != wlr_surface_get_root_surface(focused_surface)) 
       return;
