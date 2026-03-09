@@ -109,21 +109,41 @@ tileTag()
    struct simple_client* client;
    struct simple_output* output = g_server->cur_output;
    
-   // first count the number of clients
-   int n=0;
+   struct simple_client * clients_to_move[MAX_TILEABLE_CLIENTS];
+   int n = 0;
    wl_list_for_each(client, &g_server->clients, link){
       if(!(client->visible && client->output==output && (client->fixed || (client->tag & g_server->visible_tags)))) continue;
+
+      /*
+       * Here, check the geometry of the current client (window) and skip it if it's not 
+       *  visible to the "camera".
+       *  NOTE: the camera is simulated by moving all clients, therefore, an invisible
+       *  item can be thought of as an out-of-bounds item 
+       */
+      struct wlr_box client_geom = client->geom;
+      struct wlr_box screen_geom = output->full_area;
+      if ((client_geom.x < 0 && client_geom.x + client_geom.width < 0) ||
+         (client_geom.x > screen_geom.width) ||
+         ((client_geom.y < 0 && client_geom.y + client_geom.height < 0) ||
+         (client_geom.y > screen_geom.height)))
+      {
+         continue;
+      }
+      if (n > MAX_TILEABLE_CLIENTS)
+      {
+         say(DEBUG, "trying to tile more than %d windows in tag %d", MAX_TILEABLE_CLIENTS, client->tag);
+      }
+      clients_to_move[n] = client;
       n++;
    }
 
    int gap_width = g_config->tile_gap_width;
    int bw = g_config->border_width;
 
-   int i=0;
    struct wlr_box new_geom;
-   wl_list_for_each(client, &g_server->clients, link){
-      if(!(client->visible && client->output==output && (client->fixed || (client->tag & g_server->visible_tags)))) continue;
-      
+   for (int i = 0; i < n; i++)
+   {
+      client = clients_to_move[i];
       if(i==0) { // master window
          new_geom.x = output->usable_area.x + gap_width + bw;
          new_geom.y = output->usable_area.y + gap_width + bw;
@@ -142,7 +162,6 @@ tileTag()
          
          set_client_geometry(client, true);
       }
-      i++;
    }
 }
 

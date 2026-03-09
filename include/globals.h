@@ -19,6 +19,8 @@
 
 #define N_LAYER_SHELL_LAYERS 4
 
+#define MAX_TILEABLE_CLIENTS 256
+
 //--- macros -----
 #define LISTEN(E, L, H)    wl_signal_add((E), ((L)->notify = (H), (L)))
 #define LENGTH(X)          (sizeof X / sizeof X[0])
@@ -29,7 +31,7 @@
 //--- enums -----
 enum BorderColours   { FOCUSED, UNFOCUSED, URGENT, MARKED, FIXED, OUTLINE, NBORDERCOL };
 enum KeyFunctions    { SPAWN, QUIT, LOCK, TAG, CLIENT, NFUNC };
-enum MouseContext    { CONTEXT_ROOT, CONTEXT_CLIENT, CONTEXT_ALL, NCONTEXT};
+enum MouseContext    { CONTEXT_ROOT, CONTEXT_CLIENT, CONTEXT_ANY, NCONTEXT};
 enum CursorMode      { CURSOR_NORMAL, CURSOR_MOVE, CURSOR_RESIZE, CURSOR_PRESSED, CURSOR_CAMERA };
 
 enum MessageType        { DEBUG, INFO, WARNING, ERROR, NMSG };

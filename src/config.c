@@ -245,9 +245,9 @@ readConfiguration(char* filename)
          {
             this_context = CONTEXT_CLIENT;
          }
-         else if (!strcmp(context, "ALL"))
+         else if (!strcmp(context, "ANY"))
          {
-            this_context = CONTEXT_ALL;
+            this_context = CONTEXT_ANY;
          }
 
          struct mousemap *mousebind = calloc(1, sizeof(struct mousemap));

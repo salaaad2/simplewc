@@ -86,5 +86,5 @@ KEY = W+S+Right CLIENT tile_right
 #--- Mouse Bindings -----
 MOUSE = A+Button_Left CLIENT move
 MOUSE = A+Button_Right CLIENT resize
-MOUSE = A+Button_Middle ALL movecamera
+MOUSE = A+Button_Middle ANY movecamera
 #MOUSE = Button_Left ROOT test

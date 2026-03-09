@@ -412,7 +412,7 @@ process_cursor_button(uint32_t time, struct wlr_input_device *device, uint32_t b
             wl_list_for_each(mousemap, &g_config->mouse_bindings, link) {
                if(modifiers ^ mousemap->mask) continue;
 
-               if((mousemap->context==CONTEXT_ROOT || mousemap->context==CONTEXT_ALL) &&
+               if((mousemap->context==CONTEXT_ROOT || mousemap->context==CONTEXT_ANY) &&
                   button == mousemap->button){
                   mouse_function(NULL, mousemap, 0);
                   return;
