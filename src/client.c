@@ -304,6 +304,7 @@ get_client_at(double lx, double ly, struct simple_client **client, struct wlr_su
 
    struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
    scene_surface = wlr_scene_surface_try_from_buffer(scene_buffer);
+   if (scene_surface == NULL) return -1;
 
    // go back until the first client
    for(pnode=node; pnode && !this_client; pnode = &pnode->parent->node){

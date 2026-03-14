@@ -1,5 +1,4 @@
 #!/bin/bash
 
-#waybar &
+waybar &
 
-foot & 

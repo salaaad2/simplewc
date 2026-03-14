@@ -5,6 +5,7 @@
 #if XWAYLAND
 #include <wlr/xwayland.h>
 #endif
+#include <cairo.h>
 
 struct simple_server {
    struct wl_display *display;
@@ -119,6 +120,7 @@ struct simple_server {
 
    // background layer
    struct wlr_scene_rect *root_bg;
+   struct wlr_scene_buffer *root_buffer;
 
    struct simple_client *grabbed_client;
    struct simple_outline *grabbed_client_outline;
@@ -146,6 +148,11 @@ struct simple_session_lock {
    struct wl_listener new_surface;
    struct wl_listener unlock;
    struct wl_listener destroy;
+};
+
+struct simple_cairo_buffer {
+   struct wlr_buffer base;
+   cairo_surface_t * surface;
 };
 
 struct simple_outline* simple_outline_create(struct wlr_scene_tree*, float*, int);

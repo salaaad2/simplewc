@@ -6,6 +6,7 @@
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_buffer.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_idle_inhibit_v1.h>
@@ -24,7 +25,7 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/util/edges.h>
-//
+
 #include <wlr/types/wlr_export_dmabuf_v1.h>
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_data_control_v1.h>
@@ -36,6 +37,7 @@
 #include <wlr/types/wlr_tablet_v2.h>
 //#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 //#include <wlr/types/wlr_ext_foreign_toplevel_list_v1.h>
+#include <wlr/interfaces/wlr_buffer.h>
 
 #include "dwl-ipc-unstable-v2-protocol.h"
 #include "globals.h"
@@ -45,6 +47,8 @@
 #include "server.h"
 #include "input.h"
 #include "ipc.h"
+#include <drm_fourcc.h>
+#include <math.h>
 
 //--- client outline procedures ------------------------------------------
 static void
@@ -400,6 +404,55 @@ output_manager_test_notify(struct wl_listener *listener, void *data)
    //
 }
 
+// CAIRO buffer compatibility with wlr_buffer (used for grid drawing)
+static void cairo_buffer_destroy(struct wlr_buffer *wlr_buffer) {
+	struct simple_cairo_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+	wlr_buffer_finish(wlr_buffer);
+	cairo_surface_destroy(buffer->surface);
+	free(buffer);
+}
+
+static bool cairo_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer,
+		uint32_t flags, void **data, uint32_t *format, size_t *stride) {
+	struct simple_cairo_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+
+	if (flags & WLR_BUFFER_DATA_PTR_ACCESS_WRITE) {
+		return false;
+	}
+
+	*format = DRM_FORMAT_ARGB8888;
+	*data = cairo_image_surface_get_data(buffer->surface);
+	*stride = cairo_image_surface_get_stride(buffer->surface);
+	return true;
+}
+
+static void cairo_buffer_end_data_ptr_access(struct wlr_buffer *wlr_buffer) {
+}
+
+static const struct wlr_buffer_impl simple_cairo_buffer_impl = {
+	.destroy = cairo_buffer_destroy,
+	.begin_data_ptr_access = cairo_buffer_begin_data_ptr_access,
+	.end_data_ptr_access = cairo_buffer_end_data_ptr_access
+};
+
+static struct simple_cairo_buffer *create_cairo_buffer(int width, int height) {
+	struct simple_cairo_buffer *buffer = calloc(1, sizeof(*buffer));
+	if (!buffer) {
+		return NULL;
+	}
+
+	wlr_buffer_init(&buffer->base, &simple_cairo_buffer_impl, width, height);
+
+	buffer->surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+			width, height);
+	if (cairo_surface_status(buffer->surface) != CAIRO_STATUS_SUCCESS) {
+		free(buffer);
+		return NULL;
+	}
+
+	return buffer;
+}
+
 //------------------------------------------------------------------------
 void 
 prepareServer() 
@@ -509,6 +562,27 @@ prepareServer()
    // set initial background - will be updated when output is changed
    g_server->root_bg = wlr_scene_rect_create(g_server->layer_tree[LyrBg], 1, 1, g_config->background_colour);
    wlr_scene_node_set_enabled(&g_server->root_bg->node, 0);
+
+	struct simple_cairo_buffer *cairo_buffer = create_cairo_buffer(1280, 720);
+   cairo_t * cr = cairo_create(cairo_buffer->surface);
+
+   cairo_set_font_size (cr, 52.0);
+   double x,y;
+   x = 128.0;
+   y = 128.0;
+
+   cairo_move_to (cr, x, y);
+
+   /* draw helping lines */
+   cairo_set_source_rgba (cr, 0.8, 0.8, 0.8, 0.6);
+   cairo_set_line_width (cr, 6.0);
+   cairo_move_to (cr, 128.0, 0);
+   cairo_rel_line_to (cr, 0, 256);
+   cairo_move_to (cr, 0, 128.0);
+   cairo_rel_line_to (cr, 256, 0);
+   cairo_stroke (cr);
+
+   g_server->root_buffer = wlr_scene_buffer_create(g_server->layer_tree[LyrBg], &cairo_buffer->base);
 
    // Use decoration protocols to negotiate server-side decorations
    wlr_server_decoration_manager_set_default_mode(wlr_server_decoration_manager_create(g_server->display),

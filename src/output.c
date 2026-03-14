@@ -287,6 +287,7 @@ new_output_notify(struct wl_listener *listener, void *data)
 
    wlr_scene_node_set_position(&g_server->root_bg->node, geom.x, geom.y);
    wlr_scene_rect_set_size(g_server->root_bg, geom.width, geom.height);
+   wlr_scene_node_set_position(&g_server->root_buffer->node, geom.x, geom.y);
    wlr_scene_node_set_position(&g_server->locked_bg->node, geom.x, geom.y);
    wlr_scene_rect_set_size(g_server->locked_bg, geom.width, geom.height);
 
@@ -294,6 +295,7 @@ new_output_notify(struct wl_listener *listener, void *data)
    wlr_scene_rect_set_size(output->fullscreen_bg, output->usable_area.width, output->usable_area.height);
 
    wlr_scene_node_set_enabled(&g_server->root_bg->node, 1);
+   wlr_scene_node_set_enabled(&g_server->root_buffer->node, 1);
 
    print_server_info();
 

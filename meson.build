@@ -20,17 +20,21 @@ add_project_arguments(
 )
 
 #--- dependencies
-wlroots = dependency('wlroots-0.19')
+wlroots = dependency('wlroots-0.20')
 wayland_server = dependency('wayland-server', version: '>=1.19.0')
 wayland_proto = dependency('wayland-protocols')
 xkbcommon = dependency('xkbcommon')
 input = dependency('libinput', version: '>=1.14')
+cairo = dependency('cairo')
+drm = dependency('libdrm')
 
 dependencies_server = [
   wlroots,
   wayland_server,
   xkbcommon,
-  input
+  input,
+  cairo,
+  drm
 ]
 
 #--- optional dependencies
