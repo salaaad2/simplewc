@@ -398,17 +398,20 @@ process_cursor_button(uint32_t time, struct wlr_input_device *device, uint32_t b
          g_server->cursor_mode = CURSOR_PRESSED;
          struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(g_server->seat);
          uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard);
-         // press on desktop
 
-         /*
-         */
          if (ctype == LAYER_SHELL_CLIENT)
          {
+            // pressed on desktop
             say(DEBUG, "Layer Shell input");
             input_focus_surface(surface);
          }
          else
          {
+            // pressed on a client
+            if (!modifiers)
+            {
+               focus_client(client, true);
+            }
             wl_list_for_each(mousemap, &g_config->mouse_bindings, link) {
                if(modifiers ^ mousemap->mask) continue;
 
