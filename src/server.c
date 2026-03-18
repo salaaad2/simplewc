@@ -136,14 +136,18 @@ void render_canvas_grid(int width, int height)
    cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
 
    // Grey
-   cairo_set_source_rgba (cairo, 0.8, 0.8, 0.8, 0.6);
-   cairo_set_line_width(cairo, 6.0);
+   
+   cairo_set_source_rgba(cairo, 
+      g_config->background_grid_colour[0],
+      g_config->background_grid_colour[1],
+      g_config->background_grid_colour[2],
+      0.6);
+   cairo_set_line_width(cairo, (float)g_config->background_grid_line_size);
 
    // Calculate grid
    int x = g_server->background_canvas->x;
    int y = g_server->background_canvas->y;
-   // TODO: get spacing, color & size from config
-   int grid_spacing = 192;
+   int grid_spacing = g_config->background_grid_line_spacing;
    int n_vert_lines = screen_width / grid_spacing;
    int n_hor_lines = screen_height / grid_spacing;
 

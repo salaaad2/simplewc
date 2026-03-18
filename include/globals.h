@@ -60,6 +60,10 @@ struct simple_config {
    float background_colour[4];
    float border_colour[NBORDERCOL][4];
 
+   float background_grid_colour[4];
+   int background_grid_line_size;
+   int background_grid_line_spacing;
+
    int tablet_rotation;
    float tablet_boundary_x[2];
    float tablet_boundary_y[2];

@@ -72,6 +72,10 @@ set_defaults()
    g_config->tablet_rotation = 0;
    g_config->tablet_boundary_x[0] = 0; g_config->tablet_boundary_x[1] = 1.;
    g_config->tablet_boundary_y[0] = 0; g_config->tablet_boundary_y[1] = 1.;
+
+   colour2rgba("#828282", g_config->background_grid_colour);
+   g_config->background_grid_line_size = 6;
+   g_config->background_grid_line_spacing = 192;
 }
 
 void
@@ -125,6 +129,10 @@ readConfiguration(char* filename)
       if(!strcmp(id, "border_colour_marked"))   colour2rgba(value, g_config->border_colour[MARKED]);
       if(!strcmp(id, "border_colour_fixed"))    colour2rgba(value, g_config->border_colour[FIXED]);
       if(!strcmp(id, "border_colour_outline"))  colour2rgba(value, g_config->border_colour[OUTLINE]);
+
+      if(!strcmp(id, "background_grid_colour"))      colour2rgba(value, g_config->background_grid_colour);
+      if(!strcmp(id, "background_grid_line_size"))      g_config->background_grid_line_size = atoi(value);
+      if(!strcmp(id, "background_grid_line_spacing"))      g_config->background_grid_line_spacing = atoi(value);
 
       if(!strcmp(id, "autostart"))     strncpy(g_config->autostart_script, value, sizeof g_config->autostart_script);
 

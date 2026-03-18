@@ -18,6 +18,11 @@ border_colour_urgent = #FF0000
 border_colour_fixed = #0000FF
 border_colour_outline = #FFFFFF
 
+#--- Background grid options ---
+background_grid_colour = #828282
+background_grid_line_size = 6
+background_grid_line_spacing = 192
+
 #--- Focus style -----
 # 0 - none / 1 - sloppy / 2 - raise
 focus_type = 1
