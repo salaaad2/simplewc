@@ -120,7 +120,7 @@ struct simple_server {
 
    // background layer
    struct wlr_scene_rect *root_bg;
-   struct wlr_scene_buffer *root_buffer;
+   struct simple_background_canvas *background_canvas;
 
    struct simple_client *grabbed_client;
    struct simple_outline *grabbed_client_outline;
@@ -150,13 +150,32 @@ struct simple_session_lock {
    struct wl_listener destroy;
 };
 
-struct simple_cairo_buffer {
-   struct wlr_buffer base;
+// courtesy of edwl
+struct simple_background_canvas {
+   cairo_t *cairo;
+
+   struct wlr_scene_tree *scene;
+
+   // Surface is :
+   struct wlr_readonly_data_buffer *buffer;
+   struct wlr_scene_buffer *data;
    cairo_surface_t * surface;
+
+   int x,y;
+};
+
+// courtesy of edwl too
+struct wlr_readonly_data_buffer {
+   struct wlr_buffer base;
+
+   cairo_surface_t *surface;
+   struct wlr_scene_buffer *data;
 };
 
 struct simple_outline* simple_outline_create(struct wlr_scene_tree*, float*, int);
 void simple_outline_set_size(struct simple_outline*, int, int);
+
+void render_canvas_grid(int, int);
 
 void check_idle_inhibitor();
 
@@ -168,5 +187,8 @@ void tileTag();
 void prepareServer();
 void startServer();
 void cleanupServer();
+
+struct wlr_readonly_data_buffer *readonly_data_buffer_create(cairo_surface_t* surface);
+struct wlr_readonly_data_buffer *readonly_data_buffer_drop(cairo_surface_t* surface);
 
 #endif

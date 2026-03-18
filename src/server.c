@@ -35,8 +35,6 @@
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_xdg_activation_v1.h>
 #include <wlr/types/wlr_tablet_v2.h>
-//#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
-//#include <wlr/types/wlr_ext_foreign_toplevel_list_v1.h>
 #include <wlr/interfaces/wlr_buffer.h>
 
 #include "dwl-ipc-unstable-v2-protocol.h"
@@ -49,6 +47,155 @@
 #include "ipc.h"
 #include <drm_fourcc.h>
 #include <math.h>
+
+// from edwl:
+//--- wlr_readonly_data_buffer_impl ------------------------------------------
+static const struct wlr_buffer_impl readonly_data_buffer_impl;
+
+static struct wlr_readonly_data_buffer *readonly_data_buffer_from_buffer(
+    struct wlr_buffer *wlr_buffer)
+{
+   assert(wlr_buffer->impl == &readonly_data_buffer_impl);
+   struct wlr_readonly_data_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+   return buffer;
+}
+
+static void readonly_data_buffer_destroy(struct wlr_buffer *wlr_buffer)
+{
+   struct wlr_readonly_data_buffer *buffer =
+      readonly_data_buffer_from_buffer(wlr_buffer);
+   free(buffer);
+}
+
+static bool readonly_data_buffer_begin_data_ptr_access(
+   struct wlr_buffer *wlr_buffer,
+   uint32_t flags,
+   void **data,
+   uint32_t *format,
+   size_t *stride)
+{
+   struct wlr_readonly_data_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+
+   if (flags & WLR_BUFFER_DATA_PTR_ACCESS_WRITE)
+   {
+      return false;
+   }
+
+   *format = DRM_FORMAT_ARGB8888;
+   *data = cairo_image_surface_get_data(buffer->surface);
+   *stride = cairo_image_surface_get_stride(buffer->surface);
+   return true;
+}
+
+static void readonly_data_buffer_end_data_ptr_access(struct wlr_buffer *wlr_buffer)
+{
+   // intentionally left blank
+}
+
+static const struct wlr_buffer_impl readonly_data_buffer_impl = {
+   .destroy = readonly_data_buffer_destroy,
+   .begin_data_ptr_access = readonly_data_buffer_begin_data_ptr_access,
+   .end_data_ptr_access = readonly_data_buffer_end_data_ptr_access,
+};
+
+struct wlr_readonly_data_buffer *readonly_data_buffer_create(cairo_surface_t* surface)
+{
+	struct wlr_readonly_data_buffer *buffer = calloc(1, sizeof(*buffer));
+	if (buffer == NULL) {
+		return NULL;
+	}
+   int width = cairo_image_surface_get_width(surface);
+   int height = cairo_image_surface_get_height(surface);
+
+	wlr_buffer_init(&buffer->base, &readonly_data_buffer_impl, width, height);
+
+	buffer->surface = surface;
+	return buffer;
+}
+
+void render_canvas_grid(int width, int height)
+{
+   cairo_t * cairo = NULL;
+   cairo_surface_t * surface = NULL;
+
+   if (g_server->background_canvas->surface == NULL)
+   { 
+      g_server->background_canvas->surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+   }
+   surface = g_server->background_canvas->surface;
+
+   cairo = cairo_create(surface);
+
+   // Clear
+   int screen_width = g_server->cur_output->full_area.width;
+   int screen_height = g_server->cur_output->full_area.height;
+   cairo_surface_flush(surface);
+   cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
+   cairo_rectangle(cairo, 0, 0, screen_width, screen_height);
+   cairo_fill(cairo);
+   cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
+
+   // Grey
+   cairo_set_source_rgba (cairo, 0.8, 0.8, 0.8, 0.6);
+   cairo_set_line_width(cairo, 6.0);
+
+   // Calculate grid
+   int x = g_server->background_canvas->x;
+   int y = g_server->background_canvas->y;
+   // TODO: get spacing, color & size from config
+   int grid_spacing = 192;
+   int n_vert_lines = screen_width / grid_spacing;
+   int n_hor_lines = screen_height / grid_spacing;
+
+   // clamp x&y values
+   if (x >= 0) {
+      while (x > grid_spacing)
+         x -= grid_spacing;
+   } else {
+      while (x < 0)
+         x += grid_spacing;
+   }
+   if (y >= 0) {
+      while (y > grid_spacing)
+         y -= grid_spacing;
+   } else {
+      while (y < 0)
+         y += grid_spacing;
+   }
+
+   // draw grid
+   for (int i = 0; i <= n_vert_lines; ++i)
+   {
+      cairo_move_to(cairo, x + (i * grid_spacing), 0);
+      cairo_rel_line_to(cairo, 0, screen_height);
+      cairo_stroke(cairo);
+   }
+   for (int i = 0; i <= n_hor_lines; ++i)
+   {
+      cairo_move_to(cairo, 0, y + (i * grid_spacing));
+      cairo_rel_line_to(cairo, screen_width, 0);
+      cairo_stroke(cairo);
+   }
+
+   // Clearing old data
+   if (g_server->background_canvas->data)
+   {
+      wlr_scene_node_destroy(&g_server->background_canvas->data->node);
+      wlr_buffer_drop(&g_server->background_canvas->buffer->base);
+   }
+
+   // Move to buffer
+   g_server->background_canvas->buffer = readonly_data_buffer_create(surface);
+
+   // Packing
+   g_server->background_canvas->data = wlr_scene_buffer_create(
+      g_server->layer_tree[LyrBg],
+      (struct wlr_buffer *)g_server->background_canvas->buffer);
+   g_server->background_canvas->data->node.data = NULL;
+
+   wlr_scene_node_raise_to_top(&g_server->background_canvas->data->node);
+   cairo_destroy(cairo);
+}
 
 //--- client outline procedures ------------------------------------------
 static void
@@ -404,55 +551,6 @@ output_manager_test_notify(struct wl_listener *listener, void *data)
    //
 }
 
-// CAIRO buffer compatibility with wlr_buffer (used for grid drawing)
-static void cairo_buffer_destroy(struct wlr_buffer *wlr_buffer) {
-	struct simple_cairo_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
-	wlr_buffer_finish(wlr_buffer);
-	cairo_surface_destroy(buffer->surface);
-	free(buffer);
-}
-
-static bool cairo_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer,
-		uint32_t flags, void **data, uint32_t *format, size_t *stride) {
-	struct simple_cairo_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
-
-	if (flags & WLR_BUFFER_DATA_PTR_ACCESS_WRITE) {
-		return false;
-	}
-
-	*format = DRM_FORMAT_ARGB8888;
-	*data = cairo_image_surface_get_data(buffer->surface);
-	*stride = cairo_image_surface_get_stride(buffer->surface);
-	return true;
-}
-
-static void cairo_buffer_end_data_ptr_access(struct wlr_buffer *wlr_buffer) {
-}
-
-static const struct wlr_buffer_impl simple_cairo_buffer_impl = {
-	.destroy = cairo_buffer_destroy,
-	.begin_data_ptr_access = cairo_buffer_begin_data_ptr_access,
-	.end_data_ptr_access = cairo_buffer_end_data_ptr_access
-};
-
-static struct simple_cairo_buffer *create_cairo_buffer(int width, int height) {
-	struct simple_cairo_buffer *buffer = calloc(1, sizeof(*buffer));
-	if (!buffer) {
-		return NULL;
-	}
-
-	wlr_buffer_init(&buffer->base, &simple_cairo_buffer_impl, width, height);
-
-	buffer->surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
-			width, height);
-	if (cairo_surface_status(buffer->surface) != CAIRO_STATUS_SUCCESS) {
-		free(buffer);
-		return NULL;
-	}
-
-	return buffer;
-}
-
 //------------------------------------------------------------------------
 void 
 prepareServer() 
@@ -470,7 +568,7 @@ prepareServer()
       say(ERROR, "Unable to create wlr_renderer");
 
    wlr_renderer_init_wl_display(g_server->renderer, g_server->display);
- 
+
    // create an allocator
    if(!(g_server->allocator = wlr_allocator_autocreate(g_server->backend, g_server->renderer)))
       say(ERROR, "Unable to create wlr_allocator");
@@ -563,26 +661,17 @@ prepareServer()
    g_server->root_bg = wlr_scene_rect_create(g_server->layer_tree[LyrBg], 1, 1, g_config->background_colour);
    wlr_scene_node_set_enabled(&g_server->root_bg->node, 0);
 
-	struct simple_cairo_buffer *cairo_buffer = create_cairo_buffer(1280, 720);
-   cairo_t * cr = cairo_create(cairo_buffer->surface);
+   // init background layer here
+   g_server->background_canvas = (struct simple_background_canvas*)calloc(1, sizeof(struct simple_background_canvas));
+   
+   g_server->background_canvas->surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1280, 720);
+   g_server->background_canvas->cairo = cairo_create(g_server->background_canvas->surface);
 
-   cairo_set_font_size (cr, 52.0);
-   double x,y;
-   x = 128.0;
-   y = 128.0;
+   g_server->background_canvas->scene = wlr_scene_tree_create(g_server->layer_tree[LyrBg]);
 
-   cairo_move_to (cr, x, y);
-
-   /* draw helping lines */
-   cairo_set_source_rgba (cr, 0.8, 0.8, 0.8, 0.6);
-   cairo_set_line_width (cr, 6.0);
-   cairo_move_to (cr, 128.0, 0);
-   cairo_rel_line_to (cr, 0, 256);
-   cairo_move_to (cr, 0, 128.0);
-   cairo_rel_line_to (cr, 256, 0);
-   cairo_stroke (cr);
-
-   g_server->root_buffer = wlr_scene_buffer_create(g_server->layer_tree[LyrBg], &cairo_buffer->base);
+   g_server->background_canvas->buffer = readonly_data_buffer_create(g_server->background_canvas->surface);
+   g_server->background_canvas->data = wlr_scene_buffer_create(g_server->background_canvas->scene, (struct wlr_buffer*)g_server->background_canvas->buffer);
+   wlr_scene_node_set_enabled(&g_server->background_canvas->scene->node, false);
 
    // Use decoration protocols to negotiate server-side decorations
    wlr_server_decoration_manager_set_default_mode(wlr_server_decoration_manager_create(g_server->display),
@@ -644,6 +733,7 @@ startServer()
 
    // choose initial output based on cursor position
    g_server->cur_output = get_output_at(g_server->cursor->x, g_server->cursor->y);
+   render_canvas_grid(0, 0);
 }
 
 void 

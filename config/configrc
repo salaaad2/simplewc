@@ -23,7 +23,7 @@ border_colour_outline = #FFFFFF
 focus_type = 1
 
 #--- Autostart script  -----
-autostart = /home/salade/docs/projects/wlroots/simplewc/config/autostart.sh 
+autostart = $HOME/docs/projects/wlroots/simplewc/config/autostart.sh 
 
 
 #--- XKB settings -----

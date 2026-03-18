@@ -225,6 +225,9 @@ process_cursor_move(uint32_t time, bool move_all_clients)
          c->geom.y -= diff_y;
          set_client_geometry(c, false);
       }
+      render_canvas_grid(diff_x, diff_y);
+      g_server->background_canvas->x -= diff_x;
+      g_server->background_canvas->y -= diff_y;
    }
 
    set_client_geometry(client, false);
